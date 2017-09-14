@@ -10,6 +10,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"strings"
 )
 
 type App struct {
@@ -31,36 +33,6 @@ func (a *App) Initialize(user, password, dbname string) {
 
 func (a *App) Run(addr string) {
 	log.Fatal(http.ListenAndServe(":8000", a.Router))
-}
-
-func (a *App) getTask(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	task_sha256 := vars["sha256"]
-	/*	if val, ok := vars["md5"]; ok {
-
-		}
-	*/
-	t := Task{sha256: task_sha256}
-	if err := t.getTask(a.DB); err != nil {
-		switch err {
-		case sql.ErrNoRows:
-			respondWithError(w, http.StatusNotFound, "Task sha256 not found.")
-		default:
-			respondWithError(w, http.StatusInternalServerError, err.Error())
-		}
-	}
-	respondWithJSON(w, http.StatusOK, t)
-
-}
-
-func (a *App) getTasks(w http.ResponseWriter, r *http.Request) {
-	tasks, err := getTasks(a.DB)
-
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	respondWithJSON(w, http.StatusOK, tasks)
 }
 
 func (a *App) getNode(w http.ResponseWriter, r *http.Request) {
@@ -119,6 +91,16 @@ func (a *App) deleteNode(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
 }
 
+func (a *App) getTasks(w http.ResponseWriter, r *http.Request) {
+	tasks, err := getTasks(a.DB)
+
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respondWithJSON(w, http.StatusOK, tasks)
+}
+
 func (a *App) createTask(w http.ResponseWriter, r *http.Request) {
 	file, handler, err := r.FormFile("filename")
 	if err != nil {
@@ -132,7 +114,56 @@ func (a *App) createTask(w http.ResponseWriter, r *http.Request) {
 	if _, err := io.Copy(f, file); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 	}
+	err = a.submitTask("/tmp/"+handler.Filename, w)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+	}
 	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
+}
+
+func (a *App) getTask(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	task_sha256 := vars["sha256"]
+	/*	if val, ok := vars["md5"]; ok {
+
+		}
+	*/
+	t := Task{sha256: task_sha256}
+	if err := t.getTask(a.DB); err != nil {
+		switch err {
+		case sql.ErrNoRows:
+			respondWithError(w, http.StatusNotFound, "Task sha256 not found.")
+		default:
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+		}
+	}
+	respondWithJSON(w, http.StatusOK, t)
+}
+
+// TODO: change this whole function done with curl for speedness
+func (a *App) submitTask(filename string, w http.ResponseWriter) error {
+	nodes, err := getNodes(a.DB)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return err
+	}
+	for _, node := range nodes {
+		if node.Status == "active" {
+			cmd := fmt.Sprintf("curl -F file=@%s http://%s:8090/tasks/create/file", filename, node.Host)
+			parts := strings.Fields(cmd)
+			out, err := exec.Command(parts[0], parts[1], parts[2], parts[3]).Output()
+			if err != nil {
+				respondWithError(w, http.StatusInternalServerError, err.Error())
+				return err
+			}
+			// Little hack i did, this shouldn't really be like this
+			var parsed_output map[string]interface{}
+			json.Unmarshal(out, &parsed_output)
+			respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
+		}
+	}
+	respondWithJSON(w, http.StatusServiceUnavailable, map[string]string{"result": "All machines are busy. Queued."})
+	return nil
 }
 
 func respondWithError(w http.ResponseWriter, code int, message string) {
