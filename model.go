@@ -5,8 +5,9 @@ import (
 )
 
 type Node struct {
-	Name string `json:"name"`
-	Host string `json:"host"`
+	Name   string `json:"name"`
+	Host   string `json:"host"`
+	Status string `json:"status"`
 }
 
 type Task struct {
