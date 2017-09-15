@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -31,6 +32,21 @@ func (a *App) population_monitoring() {
 			n_struct := new(CuckooStruct)
 			JSONGet("http://"+node.Host+":8090/cuckoo/status", n_struct)
 			node_status_count[n_struct.Hostname] = n_struct.Tasks.Pending
+		}
+		time.Sleep(time.Second * 30)
+	}
+}
+
+func (a *App) task_monitoring() {
+	for {
+		tasks, err := getTasks(a.DB)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		for _, task := range tasks {
+			t_struct := new(CuckooTaskStruct)
+			// ports shouldnt be hardcoded...
+			JSONGet("http://"+task.Host+":8090/tasks/view/"+strconv.Itoa(int(task.Task_id)), t_struct)
 		}
 		time.Sleep(time.Second * 30)
 	}
