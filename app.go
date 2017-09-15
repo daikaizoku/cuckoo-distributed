@@ -141,7 +141,7 @@ func (a *App) getTask(w http.ResponseWriter, r *http.Request) {
 
 		}
 	*/
-	t := Task{sha256: task_sha256}
+	t := Task{Sha256: task_sha256}
 	if err := t.getTask(a.DB); err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -173,11 +173,11 @@ func (a *App) submitTask(fp string, w http.ResponseWriter) error {
 			var parsed_output map[string]interface{}
 			json.Unmarshal(out, &parsed_output)
 			t := Task{
-				sha256:  sha256sum(fp),
-				md5:     md5sum(fp),
-				status:  "pending",
-				task_id: parsed_output["task_id"].(float64),
-				host:    node.Host,
+				Sha256:  sha256sum(fp),
+				Md5:     md5sum(fp),
+				Status:  "pending",
+				Task_id: parsed_output["task_id"].(float64),
+				Host:    node.Host,
 			}
 			if err := t.insertTask(a.DB); err != nil {
 				respondWithError(w, http.StatusInternalServerError, err.Error())
@@ -199,7 +199,6 @@ func respondWithError(w http.ResponseWriter, code int, message string) {
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	response, _ := json.Marshal(payload)
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(response)
