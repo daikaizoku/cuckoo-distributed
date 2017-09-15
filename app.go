@@ -42,6 +42,7 @@ func (a *App) Initialize(user, password, dbname string) {
 	a.Router = mux.NewRouter()
 	a.initializeRoutes()
 	go a.population_monitoring()
+	go a.task_monitoring()
 }
 
 func (a *App) Run(addr string) {
