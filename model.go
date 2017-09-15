@@ -52,6 +52,58 @@ type CuckooStruct struct {
 	} `json:"machines"`
 }
 
+type CuckooTaskStruct struct {
+	Task struct {
+		AddedOn        string   `json:"added_on"`
+		Category       string   `json:"category"`
+		Clock          string   `json:"clock"`
+		CompletedOn    string   `json:"completed_on"`
+		Custom         string   `json:"custom"`
+		Duration       int      `json:"duration"`
+		EnforceTimeout bool     `json:"enforce_timeout"`
+		Errors         []string `json:"errors"`
+		Guest          struct {
+			ID         int    `json:"id"`
+			Label      string `json:"label"`
+			Manager    string `json:"manager"`
+			Name       string `json:"name"`
+			ShutdownOn string `json:"shutdown_on"`
+			StartedOn  string `json:"started_on"`
+			Status     string `json:"status"`
+			TaskID     int    `json:"task_id"`
+		} `json:"guest"`
+		ID      int    `json:"id"`
+		Machine string `json:"machine"`
+		Memory  bool   `json:"memory"`
+		Options struct {
+		} `json:"options"`
+		Owner      string      `json:"owner"`
+		Package    string      `json:"package"`
+		Platform   string      `json:"platform"`
+		Priority   int         `json:"priority"`
+		Processing interface{} `json:"processing"`
+		Route      string      `json:"route"`
+		Sample     struct {
+			Crc32    string      `json:"crc32"`
+			FileSize int         `json:"file_size"`
+			FileType string      `json:"file_type"`
+			ID       int         `json:"id"`
+			Md5      string      `json:"md5"`
+			Sha1     string      `json:"sha1"`
+			Sha256   string      `json:"sha256"`
+			Sha512   string      `json:"sha512"`
+			Ssdeep   interface{} `json:"ssdeep"`
+		} `json:"sample"`
+		SampleID  int           `json:"sample_id"`
+		StartedOn string        `json:"started_on"`
+		Status    string        `json:"status"`
+		SubmitID  interface{}   `json:"submit_id"`
+		Tags      []interface{} `json:"tags"`
+		Target    string        `json:"target"`
+		Timeout   int           `json:"timeout"`
+	} `json:"task"`
+}
+
 func getNodes(db *sql.DB) ([]Node, error) {
 	rows, err := db.Query("SELECT name, node FROM nodes")
 
