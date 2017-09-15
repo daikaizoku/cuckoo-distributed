@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"log"
 	"os"
@@ -18,7 +19,7 @@ func sha256sum(filepath string) string {
 	if _, err := io.Copy(h, f); err != nil {
 		log.Fatal(err.Error())
 	}
-	return string(h.Sum(nil))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func md5sum(filepath string) string {
@@ -31,5 +32,5 @@ func md5sum(filepath string) string {
 	if _, err := io.Copy(h, f); err != nil {
 		log.Fatal(err.Error())
 	}
-	return string(h.Sum(nil))
+	return hex.EncodeToString(h.Sum(nil))
 }
