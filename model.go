@@ -11,11 +11,11 @@ type Node struct {
 }
 
 type Task struct {
-	sha256  string  `json:"sha256"`
-	md5     string  `json:"md5"`
-	status  string  `json:"status"`
-	task_id float64 `json:"task_id"`
-	host    string  `json:"host"`
+	Sha256  string  `json:"sha256"`
+	Md5     string  `json:"md5"`
+	Status  string  `json:"status"`
+	Task_id float64 `json:"task_id"`
+	Host    string  `json:"host"`
 }
 
 type CuckooStruct struct {
@@ -96,7 +96,7 @@ func (n *Node) updateNode(db *sql.DB) error {
 }
 
 func getTasks(db *sql.DB) ([]Task, error) {
-	rows, err := db.Query("SELECT sha256, md5, status, task_id, host FROM tasks WHERE status=active")
+	rows, err := db.Query("SELECT sha256, md5, status, task_id, host FROM tasks WHERE status='pending'")
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func getTasks(db *sql.DB) ([]Task, error) {
 
 	for rows.Next() {
 		var t Task
-		if err := rows.Scan(&t.sha256, &t.md5, &t.status, &t.task_id, &t.host); err != nil {
+		if err := rows.Scan(&t.Sha256, &t.Md5, &t.Status, &t.Task_id, &t.Host); err != nil {
 			return nil, err
 		}
 		tasks = append(tasks, t)
@@ -116,15 +116,15 @@ func getTasks(db *sql.DB) ([]Task, error) {
 }
 
 func (t *Task) getTask(db *sql.DB) error {
-	if len(t.md5) > 0 {
-		return db.QueryRow("SELECT sha256, md5, status, task_id, host FROM tasks WHERE md5=$1", t.md5).Scan(&t.md5)
+	if len(t.Md5) > 0 {
+		return db.QueryRow("SELECT sha256, md5, status, task_id, host FROM tasks WHERE md5=$1", t.Md5).Scan(&t.Md5)
 	}
-	return db.QueryRow("SELECT sha256, md5, status, task_id, host FROM tasks WHERE sha256=$1", t.sha256).Scan(&t.sha256)
+	return db.QueryRow("SELECT sha256, md5, status, task_id, host FROM tasks WHERE sha256=$1", t.Sha256).Scan(&t.Sha256)
 }
 
 func (t *Task) insertTask(db *sql.DB) error {
-	err := db.QueryRow("INSERT INTO tasks(sha256, md5, status, task_id, host) VALUES()", t.sha256, t.md5, t.status, t.task_id, t.host).Scan(
-		&t.sha256, &t.md5, &t.status, &t.task_id, &t.host)
+	err := db.QueryRow("INSERT INTO tasks(sha256, md5, status, task_id, host) VALUES($1,$2,$3,$4,$5)", t.Sha256, t.Md5, t.Status, t.Task_id, t.Host).Scan(
+		&t.Sha256, &t.Md5, &t.Status, &t.Task_id, &t.Host)
 	if err != nil {
 		return err
 	}
