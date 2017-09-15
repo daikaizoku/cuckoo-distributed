@@ -12,7 +12,19 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
+
+var Client = &http.Client{Timeout: 10 * time.Second}
+
+func JSONGet(url string, target interface{}) error {
+	res, err := Client.Get(url)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	return json.NewDecoder(res.Body).Decode(target)
+}
 
 type App struct {
 	Router *mux.Router
@@ -29,6 +41,7 @@ func (a *App) Initialize(user, password, dbname string) {
 	}
 	a.Router = mux.NewRouter()
 	a.initializeRoutes()
+	go a.population_monitoring()
 }
 
 func (a *App) Run(addr string) {
@@ -140,26 +153,40 @@ func (a *App) getTask(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, t)
 }
 
-// TODO: change this whole function done with curl for speedness
-func (a *App) submitTask(filename string, w http.ResponseWriter) error {
+// TODO: change this whole dirty curl hack done for speedness
+func (a *App) submitTask(fp string, w http.ResponseWriter) error {
 	nodes, err := getNodes(a.DB)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
-		return err
+		return nil
 	}
 	for _, node := range nodes {
-		if node.Status == "active" {
-			cmd := fmt.Sprintf("curl -F file=@%s http://%s:8090/tasks/create/file", filename, node.Host)
+		if check_population(node_status_count[node.Host]) == "low" {
+			cmd := fmt.Sprintf("curl -F file=@%s http://%s:8090/tasks/create/file", fp, node.Host)
 			parts := strings.Fields(cmd)
 			out, err := exec.Command(parts[0], parts[1], parts[2], parts[3]).Output()
 			if err != nil {
 				respondWithError(w, http.StatusInternalServerError, err.Error())
-				return err
+				return nil
 			}
 			// Little hack i did, this shouldn't really be like this
 			var parsed_output map[string]interface{}
 			json.Unmarshal(out, &parsed_output)
-			respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
+			t := Task{
+				sha256:  sha256sum(fp),
+				md5:     md5sum(fp),
+				status:  "pending",
+				task_id: parsed_output["task_id"].(float64),
+				host:    node.Host,
+			}
+			if err := t.insertTask(a.DB); err != nil {
+				respondWithError(w, http.StatusInternalServerError, err.Error())
+				return nil
+			}
+			respondWithJSON(w, http.StatusOK, map[string]string{
+				"result":  "success",
+				"task_id": parsed_output["task_id"].(string),
+			})
 		}
 	}
 	respondWithJSON(w, http.StatusServiceUnavailable, map[string]string{"result": "All machines are busy. Queued."})
